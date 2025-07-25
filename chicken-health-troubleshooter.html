@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chicken Health Troubleshooter</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Earthy & Calm (Stone, Green, Amber) -->
+    <!-- Application Structure Plan: A wizard-style, single-page application. The user starts by selecting a primary symptom category. This action triggers a series of interactive questions. Each "Yes" or "No" answer dynamically updates the view with the next logical question from a predefined data structure. This process continues until a final diagnosis and recommendation are reached, which are then displayed in a clear, formatted result card. This structure was chosen because it simplifies a complex decision-making process, guiding the user step-by-step and preventing the information overload of a long text document. A "Start Over" button allows for easy re-use. -->
+    <!-- Visualization & Content Choices: The core of the application is an interactive decision tree. Instead of static charts, the "visualization" is the user's journey through the diagnostic questions.
+        - Goal: Guide diagnosis. Method: Interactive Q&A flow. Interaction: Clicking category and Yes/No buttons. Justification: Mirrors the logic of a troubleshooting guide perfectly, making it intuitive. Library: Vanilla JS.
+        - Goal: Present final diagnosis. Method: A styled card with clear "Probable Cause" and "Recommendations" sections. Interaction: Reading, with a button to restart. Justification: Clearly separates the conclusion from the diagnostic process. Library: N/A (HTML/CSS).
+        - Goal: Provide general advice. Method: A static, easily accessible section at the bottom. Interaction: Reading. Justification: Keeps important, non-diagnostic information always available. Library: N/A (HTML/CSS).
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .symptom-card, .question-card, .result-card {
+            transition: opacity 0.5s ease-in-out, transform 0.3s ease-in-out;
+        }
+        .symptom-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+    </style>
+</head>
+<body class="bg-stone-100 text-stone-800">
+
+    <div class="container mx-auto p-4 md:p-8 max-w-4xl">
+
+        <header class="text-center mb-8">
+            <h1 class="text-4xl md:text-5xl font-bold text-stone-900 mb-2">🐔 Chicken Health Troubleshooter</h1>
+            <p class="text-lg text-stone-600">An interactive guide to help identify common poultry health issues.</p>
+            <p class="text-sm text-stone-500 mt-2">This tool is for informational purposes only. Always consult a qualified veterinarian for a definitive diagnosis.</p>
+        </header>
+
+        <main id="troubleshooter-app" class="bg-white rounded-lg shadow-lg p-6 md:p-8">
+
+            <!-- Step 1: Category Selection -->
+            <div id="category-selection">
+                <h2 class="text-2xl font-semibold mb-4 text-center">What is the main problem you're observing?</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <button data-category="general" class="symptom-card bg-stone-200 hover:bg-stone-300 p-6 rounded-lg text-lg font-medium text-stone-800">General Sickness / Behavior</button>
+                    <button data-category="respiratory" class="symptom-card bg-stone-200 hover:bg-stone-300 p-6 rounded-lg text-lg font-medium text-stone-800">Respiratory Issues</button>
+                    <button data-category="digestive" class="symptom-card bg-stone-200 hover:bg-stone-300 p-6 rounded-lg text-lg font-medium text-stone-800">Digestive / Droppings</button>
+                    <button data-category="egg" class="symptom-card bg-stone-200 hover:bg-stone-300 p-6 rounded-lg text-lg font-medium text-stone-800">Egg Production Issues</button>
+                    <button data-category="external" class="symptom-card bg-stone-200 hover:bg-stone-300 p-6 rounded-lg text-lg font-medium text-stone-800">Skin, Feathers, or Legs</button>
+                    <button data-category="mortality" class="symptom-card bg-amber-200 hover:bg-amber-300 p-6 rounded-lg text-lg font-medium text-stone-800">Sudden Death</button>
+                    <button data-category="other" class="symptom-card bg-stone-200 hover:bg-stone-300 p-6 rounded-lg text-lg font-medium text-stone-800">Other Specific Issues</button>
+                </div>
+            </div>
+
+            <!-- Step 2: Question & Answer -->
+            <div id="question-area" class="hidden">
+                <p id="question-text" class="text-xl font-semibold mb-6 text-center"></p>
+                <div class="flex justify-center space-x-4">
+                    <button id="yes-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded-lg shadow-md transition-transform transform hover:scale-105">Yes</button>
+                    <button id="no-btn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-8 rounded-lg shadow-md transition-transform transform hover:scale-105">No</button>
+                </div>
+            </div>
+
+            <!-- Step 3: Result Display -->
+            <div id="result-area" class="hidden">
+                <div class="result-card bg-blue-50 border border-blue-200 rounded-lg p-6">
+                    <h3 class="text-xl font-bold text-blue-800 mb-2">Probable Cause:</h3>
+                    <p id="result-cause" class="mb-4 text-blue-900"></p>
+                    <h3 class="text-xl font-bold text-blue-800 mb-2">Recommendations:</h3>
+                    <ul id="result-recommendations" class="list-disc list-inside space-y-2 text-blue-900"></ul>
+                </div>
+                <div class="text-center mt-6">
+                    <button id="reset-btn" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-6 rounded-lg shadow-md transition-transform transform hover:scale-105">Start Over</button>
+                </div>
+            </div>
+
+        </main>
+
+        <footer class="mt-8 text-center text-stone-500 text-sm">
+            <p>&copy; 2024 Chicken Health Troubleshooter. For educational purposes only.</p>
+        </footer>
+
+    </div>
+
+    <script>
+        const tree = {
+            general: {
+                question: 'Is the chicken lethargic, isolated, or huddled?',
+                yes: {
+                    question: 'Is the chicken also showing ruffled feathers or a hunched posture?',
+                    yes: {
+                        question: 'Are there any other specific symptoms like diarrhea, respiratory issues, or swelling?',
+                        yes: {
+                            result: {
+                                cause: 'Multiple Symptoms Detected',
+                                recommendations: [
+                                    'Please restart and choose the most prominent symptom category (e.g., Respiratory, Digestive) to narrow down the cause.',
+                                    'Observe the bird closely for all signs to provide a veterinarian with a complete picture.'
+                                ]
+                            }
+                        },
+                        no: {
+                            question: 'Is the chicken also noticeably underweight or emaciated?',
+                            yes: {
+                                result: {
+                                    cause: "Chronic Illness or Severe Malnutrition",
+                                    recommendations: [
+                                        "Isolate the bird immediately.",
+                                        "Provide easy access to fresh water (consider electrolytes) and highly palatable, nutritious feed.",
+                                        "Check for external parasites (mites, lice). Treat if present.",
+                                        "Collect a fecal sample for parasite analysis (worms, coccidiosis).",
+                                        "VETERINARY CONSULTATION STRONGLY RECOMMENDED for diagnosis and treatment."
+                                    ]
+                                }
+                            },
+                            no: {
+                                result: {
+                                    cause: "General Malaise or Environmental Stress",
+                                    recommendations: [
+                                        "Observe closely for 24-48 hours for developing specific symptoms.",
+                                        "Ensure clean, fresh water and good quality feed are available.",
+                                        "Check coop temperature and ventilation. Ensure it's not too hot or cold.",
+                                        "Reduce stressors (e.g., bullying from other chickens, loud noises).",
+                                        "Provide a quiet, comfortable space for the bird to rest."
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    no: {
+                        question: 'Is the chicken still eating and drinking, even if less than usual?',
+                        yes: {
+                            result: {
+                                cause: "Mild Stress or Minor Injury",
+                                recommendations: [
+                                    "Monitor the bird closely for any new or worsening symptoms.",
+                                    "Ensure the environment is clean, calm, and has readily available food and water.",
+                                    "Check for signs of bullying by other chickens."
+                                ]
+                            }
+                        },
+                        no: {
+                            result: {
+                                cause: "Potentially Serious Illness or Injury",
+                                recommendations: [
+                                    "Isolate the bird immediately to prevent potential spread and allow for close observation.",
+                                    "Offer water with electrolytes directly to the beak.",
+                                    "Tempt with highly palatable food like scrambled eggs or warm, wet mash.",
+                                    "Perform a gentle but thorough physical examination for any signs of injury, swelling, or blockages.",
+                                    "CONSIDER VETERINARY CONSULTATION if there is no improvement within 12-24 hours."
+                                ]
+                            }
+                        }
+                    }
+                },
+                no: {
+                    question: 'Is the chicken showing signs of pain or discomfort (e.g., limping, reluctance to move, holding a wing oddly)?',
+                    yes: {
+                        question: 'Is there a visible injury (e.g., cut, swelling, broken bone)?',
+                        yes: {
+                            result: {
+                                cause: "Physical Injury (Trauma)",
+                                recommendations: [
+                                    "Isolate the bird in a calm, safe space to prevent further injury.",
+                                    "Clean minor wounds with a pet-safe antiseptic (e.g., Vetericyn).",
+                                    "For suspected fractures or deep wounds, IMMEDIATE VETERINARY CONSULTATION IS CRITICAL.",
+                                    "Ensure food and water are within easy reach so the bird doesn't have to move far."
+                                ]
+                            }
+                        },
+                        no: {
+                            question: 'Is there swelling in the joints or on the footpads?',
+                            yes: {
+                                result: {
+                                    cause: "Bumblefoot, Arthritis, or Joint Infection",
+                                    recommendations: [
+                                        "Isolate the bird to a clean, soft-bedded area.",
+                                        "Examine footpads for black scabs (Bumblefoot). If found, soak the foot, carefully remove the scab, clean the wound, apply antiseptic, and bandage.",
+                                        "For swollen joints, a VETERINARY CONSULTATION is needed for diagnosis and appropriate antibiotics or anti-inflammatories.",
+                                        "Improve coop hygiene and check perches for splinters or rough spots."
+                                    ]
+                                }
+                            },
+                            no: {
+                                result: {
+                                    cause: "Possible Internal Injury, Neurological Issue, or Nutritional Deficiency",
+                                    recommendations: [
+                                        "Isolate and observe closely for any other developing symptoms.",
+                                        "Review the feed to ensure it's nutritionally complete. A Vitamin B deficiency can cause leg weakness.",
+                                        "A VETERINARY CONSULTATION is recommended for a proper diagnosis."
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    no: {
+                        result: {
+                            cause: "No Obvious General Health Issues Detected",
+                            recommendations: [
+                                "If you still have concerns, please restart and check other symptom categories.",
+                                "Continue to monitor your flock daily for any changes in behavior or appearance."
+                            ]
+                        }
+                    }
+                }
+            },
+            respiratory: {
+                question: 'Is the chicken coughing, sneezing, or gasping for air?',
+                yes: {
+                    question: 'Is there also nasal discharge or swollen sinuses/face?',
+                    yes: {
+                        question: 'Is the discharge clear and watery, or thick and bubbly/foamy?',
+                        yes: {
+                            result: {
+                                cause: "Early Stage Respiratory Infection or Irritation",
+                                recommendations: [
+                                    "Improve ventilation in the coop immediately. Stale air and ammonia buildup are major irritants.",
+                                    "Check bedding for dustiness and replace with a low-dust option if necessary.",
+                                    "Isolate affected birds to prevent potential spread.",
+                                    "If symptoms worsen or spread to other birds, CONSULT A VETERINARIAN."
+                                ]
+                            }
+                        },
+                        no: {
+                            result: {
+                                cause: "Advanced Respiratory Infection (e.g., Mycoplasma, Infectious Coryza)",
+                                recommendations: [
+                                    "IMMEDIATE ISOLATION of all affected birds is crucial.",
+                                    "URGENT VETERINARY CONSULTATION is required for diagnosis and appropriate antibiotics.",
+                                    "Implement strict biosecurity measures (clean and disinfect everything, change clothes/boots between coops).",
+                                    "Culling severely ill birds may be necessary to protect the rest of the flock."
+                                ]
+                            }
+                        }
+                    },
+                    no: {
+                        question: 'Is the chicken also making rattling sounds (rales) or breathing with an open mouth?',
+                        yes: {
+                            result: {
+                                cause: "Severe Respiratory Distress (Possible Gapeworm, ILT, or Aspergillosis)",
+                                recommendations: [
+                                    "URGENT VETERINARY CONSULTATION is needed. Infectious Laryngotracheitis (ILT) is highly contagious and serious.",
+                                    "Check for gapeworm (worms visible in the trachea). Treat with a dewormer like Fenbendazole if confirmed.",
+                                    "Check feed and bedding for any signs of mold, which can cause Aspergillosis (a fungal infection)."
+                                ]
+                            }
+                        },
+                        no: {
+                            result: {
+                                cause: "Mild Respiratory Irritation",
+                                recommendations: [
+                                    "Improve coop ventilation and reduce dust from bedding.",
+                                    "Observe closely for any worsening of symptoms.",
+                                    "A small amount of apple cider vinegar in the water can support general health."
+                                ]
+                            }
+                        }
+                    }
+                },
+                no: {
+                    result: {
+                        cause: "No Obvious Respiratory Symptoms Detected",
+                        recommendations: [
+                            "If you still have concerns, please restart and check other symptom categories.",
+                            "Maintain good ventilation and clean, dry bedding to prevent future respiratory issues."
+                        ]
+                    }
+                }
+            },
+            digestive: {
+                question: 'Are there noticeable changes in droppings (diarrhea, unusual color/consistency)?',
+                yes: {
+                    question: 'Is the diarrhea bloody or orange/reddish?',
+                    yes: {
+                        result: {
+                            cause: "Coccidiosis or Severe Enteritis",
+                            recommendations: [
+                                "IMMEDIATE ISOLATION of affected birds. Coccidiosis is highly contagious.",
+                                "URGENT VETERINARY CONSULTATION for diagnosis (fecal float) and treatment with a coccidiostat (e.g., Amprolium).",
+                                "Provide supportive care with electrolytes and vitamins in the water.",
+                                "Thoroughly clean and disinfect the coop and brooder with a product effective against coccidia."
+                            ]
+                        }
+                    },
+                    no: {
+                        question: 'Is the diarrhea white, foamy, or watery?',
+                        yes: {
+                            result: {
+                                cause: "Possible Bacterial Infection, Parasites, or Stress",
+                                recommendations: [
+                                    "White/chalky diarrhea can indicate serious diseases like Pullorum; VETERINARY CONSULTATION is advised.",
+                                    "Foamy/greenish diarrhea can be caused by worms or a gut infection. Consider a fecal test and deworming.",
+                                    "Excessively watery diarrhea can be a sign of heat stress. Ensure access to cool, clean water.",
+                                    "Provide probiotics to support gut health. Monitor closely."
+                                ]
+                            }
+                        },
+                        no: {
+                            question: 'Is the chicken experiencing reduced appetite or crop issues?',
+                            yes: {
+                                question: 'Is the crop hard and swollen (Impacted Crop)?',
+                                yes: {
+                                    result: {
+                                        cause: "Impacted Crop",
+                                        recommendations: [
+                                            "Gently massage the crop to try and break up the mass.",
+                                            "Administer a few drops of olive oil or vegetable oil orally and massage again.",
+                                            "Withhold food for 24 hours, but provide plenty of water.",
+                                            "If it doesn't clear, VETERINARY CONSULTATION is needed as it can be fatal."
+                                        ]
+                                    }
+                                },
+                                no: {
+                                    question: 'Is the crop soft, squishy, and foul-smelling (Sour Crop)?',
+                                    yes: {
+                                        result: {
+                                            cause: "Sour Crop (Yeast/Fungal Infection)",
+                                            recommendations: [
+                                                "Isolate the bird and withhold food for 24 hours.",
+                                                "Provide water with a splash of apple cider vinegar (1 tbsp per gallon).",
+                                                "Gently massage the crop to help it empty. Do NOT turn the bird upside down unless you are experienced, as it can cause aspiration.",
+                                                "If it persists, a veterinarian may prescribe an antifungal medication."
+                                            ]
+                                        }
+                                    },
+                                    no: {
+                                        result: {
+                                            cause: "Reduced Appetite (Non-specific)",
+                                            recommendations: [
+                                                "This is a general sign of illness. Observe for other symptoms to narrow down the cause.",
+                                                "Check for internal parasites (worms).",
+                                                "Ensure feed is fresh and not moldy.",
+                                                "If appetite loss continues for more than a day, CONSULT A VETERINARIAN."
+                                            ]
+                                        }
+                                    }
+                                }
+                            },
+                            no: {
+                                result: {
+                                    cause: "No Obvious Digestive Issues Detected",
+                                    recommendations: [
+                                        "If you still have concerns, please restart and check other symptom categories.",
+                                        "Always provide clean water and high-quality feed to maintain good digestive health."
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                },
+                no: {
+                    question: 'Is the chicken experiencing reduced appetite or crop issues?',
+                    yes: {
+                        question: 'Is the crop hard and swollen (Impacted Crop)?',
+                        yes: {
+                            result: {
+                                cause: "Impacted Crop",
+                                recommendations: [
+                                    "Gently massage the crop to try and break up the mass.",
+                                    "Administer a few drops of olive oil or vegetable oil orally and massage again.",
+                                    "Withhold food for 24 hours, but provide plenty of water.",
+                                    "If it doesn't clear, VETERINARY CONSULTATION is needed as it can be fatal."
+                                ]
+                            }
+                        },
+                        no: {
+                            question: 'Is the crop soft, squishy, and foul-smelling (Sour Crop)?',
+                            yes: {
+                                result: {
+                                    cause: "Sour Crop (Yeast/Fungal Infection)",
+                                    recommendations: [
+                                        "Isolate the bird and withhold food for 24 hours.",
+                                        "Provide water with a splash of apple cider vinegar (1 tbsp per gallon).",
+                                        "Gently massage the crop to help it empty. Do NOT turn the bird upside down unless you are experienced, as it can cause aspiration.",
+                                        "If it persists, a veterinarian may prescribe an antifungal medication."
+                                    ]
+                                }
+                            },
+                            no: {
+                                result: {
+                                    cause: "Reduced Appetite (Non-specific)",
+                                    recommendations: [
+                                        "This is a general sign of illness. Observe for other symptoms to narrow down the cause.",
+                                        "Check for internal parasites (worms).",
+                                        "Ensure feed is fresh and not moldy.",
+                                        "If appetite loss continues for more than a day, CONSULT A VETERINARIAN."
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    no: {
+                        result: {
+                            cause: "No Obvious Digestive Issues Detected",
+                            recommendations: [
+                                "If you still have concerns, please restart and check other symptom categories.",
+                                "Always provide clean water and high-quality feed to maintain good digestive health."
+                            ]
+                        }
+                    }
+                }
+            },
+            egg: {
+                question: 'Is there a sudden drop or cessation in egg production?',
+                yes: {
+                    question: 'Are the eggs also soft-shelled, thin-shelled, or shell-less?',
+                    yes: {
+                        result: {
+                            cause: "Calcium Deficiency or Production Stress/Illness",
+                            recommendations: [
+                                "Provide a separate dish of crushed oyster shell or eggshells (baked and crushed) free-choice.",
+                                "Ensure the feed is a quality layer feed with adequate calcium and Vitamin D3.",
+                                "Check for stress factors: overcrowding, predators, extreme heat.",
+                                "If accompanied by respiratory signs, consider Infectious Bronchitis (IB) and consult a vet."
+                            ]
+                        }
+                    },
+                    no: {
+                        question: 'Are there other symptoms like lethargy, ruffled feathers, or respiratory issues?',
+                        yes: {
+                            result: {
+                                cause: "Systemic Illness Affecting Egg Production",
+                                recommendations: [
+                                    "A drop in egg production is often one of the first signs of illness.",
+                                    "Restart the troubleshooter and select the most prominent physical or behavioral symptom to get a more specific diagnosis.",
+                                    "Isolate the bird and provide supportive care."
+                                ]
+                            }
+                        },
+                        no: {
+                            result: {
+                                cause: "Non-Illness Related Production Drop",
+                                recommendations: [
+                                    "Check for molting (loss of old feathers, growth of new ones). Provide extra protein during this time.",
+                                    "Ensure at least 14-16 hours of light per day for consistent laying.",
+                                    "Check if the hen is broody (sitting on eggs, puffed up, aggressive).",
+                                    "Consider the age of the hen, as production naturally declines over time."
+                                ]
+                            }
+                        }
+                    }
+                },
+                no: {
+                    question: 'Are the eggs misshapen, wrinkled, or pale?',
+                    yes: {
+                        result: {
+                            cause: "Oviduct Stress or Viral Infection",
+                            recommendations: [
+                                "This can be an early sign of Infectious Bronchitis (IB), even without respiratory symptoms.",
+                                "Stress, heat, or a defective shell gland can also be causes.",
+                                "Observe the flock closely for any other signs of illness.",
+                                "If the issue persists or affects multiple hens, a VETERINARY CONSULTATION is recommended."
+                            ]
+                        }
+                    },
+                    no: {
+                        result: {
+                            cause: "No Obvious Egg Production Issues Detected",
+                            recommendations: [
+                                "If you still have concerns, please restart and check other symptom categories.",
+                                "Continue providing a quality layer feed and fresh water."
+                            ]
+                        }
+                    }
+                }
+            },
+            external: {
+                question: 'Are there issues with feathers (loss, pecking, dullness)?',
+                yes: {
+                    question: 'Is there significant feather loss, especially around the vent, neck, or back?',
+                    yes: {
+                        question: 'Are there visible mites (tiny moving dots, especially at night) or lice (small, straw-colored insects) on the skin or at the base of feathers?',
+                        yes: {
+                            result: {
+                                cause: "External Parasites (Mites or Lice)",
+                                recommendations: [
+                                    "Treat all birds in the flock with a poultry-safe dust or spray (e.g., permethrin-based).",
+                                    "Thoroughly clean the coop, removing all old bedding. Treat the clean coop, especially cracks and crevices, before adding new bedding.",
+                                    "Repeat the treatment in 7-10 days to catch newly hatched parasites.",
+                                    "Provide a dust bath area with wood ash or diatomaceous earth to help chickens self-treat."
+                                ]
+                            }
+                        },
+                        no: {
+                            result: {
+                                cause: "Molting, Bullying, or Nutritional Deficiency",
+                                recommendations: [
+                                    "Check if it's molting season (usually fall). Increase protein intake during this period.",
+                                    "Observe flock dynamics for feather pecking. Identify and separate the bully if possible. Provide enrichment (e.g., hanging cabbage) to reduce boredom.",
+                                    "Ensure the feed has adequate protein (at least 16% for layers)."
+                                ]
+                            }
+                        }
+                    },
+                    no: {
+                        result: {
+                            cause: "General Poor Condition",
+                            recommendations: [
+                                "Dull, rough feathers can be a sign of poor nutrition or the start of an illness.",
+                                "Review the quality of your feed and ensure it's stored properly.",
+                                "Ensure a clean, dry environment and access to a dust bath.",
+                                "Monitor for other symptoms."
+                            ]
+                        }
+                    }
+                },
+                no: {
+                    question: 'Are there issues with the comb or wattles (pale, blue, swollen, or scabby)?',
+                    yes: {
+                        question: 'Is the comb/wattles pale or bluish?',
+                        yes: {
+                            result: {
+                                cause: "Pale: Anemia, Illness, or Heat Stress. Bluish (Cyanosis): Severe Respiratory Distress or Circulatory Failure.",
+                                recommendations: [
+                                    "PALE: Check for mites/lice (which cause anemia). Deworm if needed. Ensure adequate hydration and shade in hot weather.",
+                                    "BLUISH/PURPLE: THIS IS AN EMERGENCY. It indicates a lack of oxygen. Possible causes include heart failure, severe pneumonia, or certain diseases like Avian Influenza. IMMEDIATE VETERINARY INTERVENTION IS REQUIRED."
+                                ]
+                            }
+                        },
+                        no: {
+                            question: 'Are there scabby, wart-like lesions on the comb or wattles?',
+                            yes: {
+                                result: {
+                                    cause: "Fowl Pox (Dry Form)",
+                                    recommendations: [
+                                        "Isolate the bird. Fowl Pox is a virus spread by mosquitoes and bird-to-bird contact.",
+                                        "There is no cure, but you can provide supportive care: ensure the bird is eating and drinking. The disease will run its course in a few weeks.",
+                                        "Keep wounds clean to prevent secondary bacterial infections.",
+                                        "Implement mosquito control measures around the coop."
+                                    ]
+                                }
+                            },
+                            no: {
+                                result: {
+                                    cause: "Swollen Face/Wattles (Infectious Coryza or Fowl Cholera)",
+                                    recommendations: [
+                                        "Swollen wattles or face, often with discharge, indicates a serious bacterial infection.",
+                                        "IMMEDIATE ISOLATION of affected birds.",
+                                        "URGENT VETERINARY CONSULTATION is required for diagnosis and antibiotics.",
+                                        "These diseases are highly contagious."
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    no: {
+                        question: 'Are the legs or feet scaly, crusted, or swollen?',
+                        yes: {
+                            question: 'Are the scales on the legs raised and crusty?',
+                            yes: {
+                                result: {
+                                    cause: "Scaly Leg Mites",
+                                    recommendations: [
+                                        "Isolate the bird to prevent spread.",
+                                        "Soak the bird's legs in warm, soapy water to soften the scales.",
+                                        "Gently scrub with a soft brush to remove loose scales.",
+                                        "Dry the legs and coat them thoroughly with petroleum jelly or a natural oil (like coconut or olive oil) to suffocate the mites. Repeat every few days for several weeks.",
+                                        "Clean the coop thoroughly, especially the roosts."
+                                    ]
+                                }
+                            },
+                            no: {
+                                result: {
+                                    cause: "Swollen Footpad (Bumblefoot) or Joint",
+                                    recommendations: [
+                                        "Check the bottom of the foot for a black scab, which indicates Bumblefoot (a staph infection).",
+                                        "Bumblefoot requires minor surgery to remove the infected core. Consult a vet or experienced poultry keeper.",
+                                        "Swollen leg joints can indicate Mycoplasma or other infections and require a VETERINARY CONSULTATION."
+                                    ]
+                                }
+                            }
+                        },
+                        no: {
+                            result: {
+                                cause: "No Obvious External Issues Detected",
+                                recommendations: [
+                                    "If you still have concerns, please restart and check other symptom categories."
+                                ]
+                            }
+                        }
+                    }
+                }
+            },
+            mortality: {
+                question: 'Have you found a dead bird with no prior signs of illness?',
+                yes: {
+                    question: 'Have multiple birds died suddenly in a short period (24-48 hours)?',
+                    yes: {
+                        result: {
+                            cause: "Highly Contagious Disease (e.g., Avian Influenza, Newcastle Disease) or Acute Toxin Exposure.",
+                            recommendations: [
+                                "THIS IS A CRITICAL SITUATION. Do not handle the birds without protective gear (gloves, mask).",
+                                "Contact your local agricultural extension office or state veterinarian IMMEDIATELY. These are reportable diseases.",
+                                "Do not move any birds on or off your property.",
+                                "Secure the area to prevent access by other animals.",
+                                "A necropsy (autopsy) by a professional is essential to determine the cause."
+                            ]
+                        }
+                    },
+                    no: {
+                        result: {
+                            cause: "Sudden Individual Death (e.g., Heart Attack, Stroke, Internal Injury)",
+                            recommendations: [
+                                "Sometimes, an apparently healthy bird can die suddenly from causes like 'Sudden Death Syndrome' in broilers or a heart attack.",
+                                "Check the deceased bird for any signs of injury from a predator.",
+                                "Carefully observe the rest of the flock for ANY signs of illness. A single death can be the first sign of a flock-wide problem.",
+                                "If you are concerned, having a vet perform a necropsy can provide peace of mind and valuable information."
+                            ]
+                        }
+                    }
+                },
+                no: {
+                    result: {
+                        cause: "No Mortality Event",
+                        recommendations: [
+                            "This category is for sudden, unexplained death. If your bird is sick but still alive, please restart and choose a different symptom category."
+                        ]
+                    }
+                }
+            },
+            other: {
+                question: 'Is there red tissue protruding from the vent?',
+                yes: {
+                    result: {
+                        cause: "Prolapsed Vent",
+                        recommendations: [
+                            "Isolate the hen immediately in a clean, dark, quiet space to stop other chickens from pecking at the tissue.",
+                            "Gently clean the prolapsed tissue with warm water and a mild antiseptic.",
+                            "You can apply a hemorrhoid cream (like Preparation H) or sugar to help reduce swelling.",
+                            "With clean, lubricated fingers, gently try to push the tissue back in. It may take a few attempts.",
+                            "If you cannot get it to stay in, or if the hen is egg-bound, a VETERININARY CONSULTATION is required."
+                        ]
+                    }
+                },
+                no: {
+                    question: 'Is the chicken straining to lay an egg but nothing is coming out?',
+                    yes: {
+                        result: {
+                            cause: "Egg Bound",
+                            recommendations: [
+                                "This is a life-threatening emergency.",
+                                "Give the hen a warm Epsom salt bath for 20-30 minutes, keeping the water level below her head. This can relax the muscles.",
+                                "After the bath, place her in a dark, quiet, warm crate to rest and try to pass the egg.",
+                                "You can offer a liquid calcium supplement orally.",
+                                "If the egg is not passed within a few hours, she needs IMMEDIATE VETERINARY HELP."
+                            ]
+                        }
+                    },
+                    no: {
+                        question: 'Are there visible lumps or tumors on the body?',
+                        yes: {
+                            result: {
+                                cause: "Abscess, Cyst, or Tumor (e.g., Marek's Disease)",
+                                recommendations: [
+                                    "A VETERINARY CONSULTATION is necessary to determine the nature of the lump.",
+                                    "An abscess may need to be lanced and drained by a professional.",
+                                    "Tumors, especially those caused by Marek's disease, are often untreatable. A vet can provide a diagnosis and humane options."
+                                ]
+                            }
+                        },
+                        no: {
+                            result: {
+                                cause: "Symptom Not Listed",
+                                recommendations: [
+                                    "The symptoms you're observing may not be covered in this basic guide.",
+                                    "Please consult a qualified poultry veterinarian or a reliable poultry resource for further assistance.",
+                                    "Continue to monitor your bird for any changes."
+                                ]
+                            }
+                        }
+                    }
+                }
+            }
+        };
+
+        let currentNode = null;
+
+        const categorySelection = document.getElementById('category-selection');
+        const questionArea = document.getElementById('question-area');
+        const resultArea = document.getElementById('result-area');
+        const questionText = document.getElementById('question-text');
+        const resultCause = document.getElementById('result-cause');
+        const resultRecommendations = document.getElementById('result-recommendations');
+        const yesBtn = document.getElementById('yes-btn');
+        const noBtn = document.getElementById('no-btn');
+        const resetBtn = document.getElementById('reset-btn');
+
+        function start(category) {
+            currentNode = tree[category];
+            categorySelection.classList.add('hidden');
+            displayNode(currentNode);
+        }
+
+        function displayNode(node) {
+            if (node.question) {
+                displayQuestion(node);
+            } else if (node.result) {
+                displayResult(node.result);
+            }
+        }
+
+        function displayQuestion(node) {
+            questionText.textContent = node.question;
+            questionArea.classList.remove('hidden');
+            resultArea.classList.add('hidden');
+        }
+
+        function displayResult(result) {
+            questionArea.classList.add('hidden');
+            resultCause.textContent = result.cause;
+            resultRecommendations.innerHTML = '';
+            result.recommendations.forEach(rec => {
+                const li = document.createElement('li');
+                li.innerHTML = rec;
+                resultRecommendations.appendChild(li);
+            });
+            resultArea.classList.remove('hidden');
+        }
+
+        function handleAnswer(answer) {
+            if (currentNode && currentNode[answer]) {
+                currentNode = currentNode[answer];
+                displayNode(currentNode);
+            }
+        }
+
+        function reset() {
+            currentNode = null;
+            questionArea.classList.add('hidden');
+            resultArea.classList.add('hidden');
+            categorySelection.classList.remove('hidden');
+        }
+
+        document.querySelectorAll('.symptom-card').forEach(button => {
+            button.addEventListener('click', () => {
+                start(button.dataset.category);
+            });
+        });
+
+        yesBtn.addEventListener('click', () => handleAnswer('yes'));
+        noBtn.addEventListener('click', () => handleAnswer('no'));
+        resetBtn.addEventListener('click', reset);
+
+    </script>
+</body>
+</html>
